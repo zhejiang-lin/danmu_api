@@ -2,7 +2,6 @@ name: Fork Sync
 
 permissions:
     contents: write
-    workflows: write  # 上游提交若包含工作流文件变更，同步时需要此权限
 
 on:
     schedule:
@@ -18,10 +17,14 @@ jobs:
         steps:
             - name: Sync fork with upstream via GitHub API
               run: |
+                if [ -z "${{ secrets.SYNC_TOKEN }}" ]; then
+                  echo "::error::仓库未设置 SYNC_TOKEN secret（需要 repo + workflow 作用域的 PAT），无法同步上游涉及工作流文件的变更"
+                  exit 1
+                fi
                 echo "Syncing ${{ github.repository }} (branch: main) with upstream..."
                 gh api -X POST "/repos/${{ github.repository }}/merge-upstream" \
                   -f branch=main \
                   --jq '"\(.message) (merge_type=\(.merge_type))"'
                 echo "Sync completed successfully"
               env:
-                GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
